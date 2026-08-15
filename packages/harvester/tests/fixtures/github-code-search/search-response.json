@@ -1,0 +1,29 @@
+{
+  "total_count": 5,
+  "items": [
+    {
+      "path": "SKILL.md",
+      "repository": {
+        "full_name": "owner/test-skill-1",
+        "html_url": "https://github.com/owner/test-skill-1"
+      },
+      "score": 100
+    },
+    {
+      "path": "SKILL.md",
+      "repository": {
+        "full_name": "owner/test-skill-2",
+        "html_url": "https://github.com/owner/test-skill-2"
+      },
+      "score": 95
+    },
+    {
+      "path": "other-file.md",
+      "repository": {
+        "full_name": "owner/other-repo",
+        "html_url": "https://github.com/owner/other-repo"
+      },
+      "score": 80
+    }
+  ]
+}

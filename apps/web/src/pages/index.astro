@@ -1,0 +1,31 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { listPaginated, clampLimit, clampPage } from "../lib/public-query";
+import { getDueSources } from "../lib/db";
+import { ARTIFACT_KINDS } from "../packages/harvester/src/artifact-schema";
+---
+
+<Layout>
+  <section class="max-w-4xl mx-auto py-12">
+    <h1 class="text-3xl font-bold mb-6">Skills Hub</h1>
+    
+    <p class="text-lg text-muted-foreground mb-8">
+      A self-updating, self-researching directory of AI agent capabilities.
+    </p>
+    
+    <!-- Corpus Stats -->
+    <div class="grid grid-cols-2 gap-4 mb-8">
+      {{#each getDueSources as |source|}}
+        <!-- Source stats would go here -->
+      {{/each}}
+    </div>
+    
+    <!-- Recently Added -->
+    <section class="mb-8">
+      <h2 class="text-xl font-medium mb-4">Recently Added</h2>
+      <p class="text-sm text-muted-foreground">
+        Check back soon - the directory is updated automatically every 6 hours.
+      </p>
+    </section>
+  </section>
+</Layout>

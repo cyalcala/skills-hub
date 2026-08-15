@@ -6,8 +6,6 @@
 // - Missing frontmatter is NOT a rejection — the adapter emits the artifact
 //   with has_valid_frontmatter: false and lets the rubric score it down
 
-import { type ArtifactInput } from "../registry";
-
 export interface FrontmatterResult {
   name: string | null;
   description: string | null;
@@ -107,4 +105,3 @@ function parseFrontmatterBody(body: string): FrontmatterResult {
   };
 }
 
-export { parseFrontmatter };

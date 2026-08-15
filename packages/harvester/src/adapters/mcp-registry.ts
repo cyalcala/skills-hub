@@ -75,7 +75,10 @@ export function mcpRegistryAdapter(): Adapter {
               description: item.description || undefined,
               repo_full_name: item.owner?.repo || undefined,
               repo_host: "other",
-              tags: item.tags ? item.tags.split(","").map((t: string) => t.trim()).filter((t: string) => t.length > 0) : [],
+              // Simplified tags handling
+              tags: item.tags && typeof item.tags === "string"
+                ? item.tags.split(",").map((t: string) => t.trim()).filter((t: string) => t.length > 0)
+                : item.tags || [],
               install_target: ["generic"],
               version: item.version || undefined,
               stars: item.stars || 0,

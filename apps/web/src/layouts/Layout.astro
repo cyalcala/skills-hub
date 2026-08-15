@@ -1,0 +1,24 @@
+---
+import "./global.css";
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Skills Hub - A self-updating directory of AI agent capabilities" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>{title}</title>
+    <meta property="og:title" content="Skills Hub" />
+    <meta property="og:description" content="A self-updating directory of AI agent capabilities" />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <div class="min-h-screen bg-background text-foreground">
+      <slot />
+    </div>
+  </body>
+</html>

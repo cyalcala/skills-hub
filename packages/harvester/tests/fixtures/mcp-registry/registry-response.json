@@ -1,0 +1,25 @@
+{
+  "servers": [
+    {
+      "name": "test-mcp-server",
+      "url": "https://example.com/mcp",
+      "description": "A test MCP server for demonstration",
+      "owner": "testuser",
+      "repo": "testuser/test-mcp-server",
+      "version": "1.0.0",
+      "stars": 42,
+      "lastUpdated": "2026-08-10T00:00:00Z"
+    },
+    {
+      "name": "another-mcp-server",
+      "url": "https://another-example.com/mcp",
+      "description": "Another MCP server",
+      "owner": "anotheruser",
+      "repo": "anotheruser/another-mcp-server",
+      "version": "0.5.0",
+      "stars": 15,
+      "lastUpdated": "2026-07-20T00:00:00Z"
+    }
+  ],
+  "nextCursor": "eyJpbmlmdGVyIjogMTAsICJkZXZpY2VfaWQiOiAiVGVzdC1tYWludGVyIiwgImV4cG9ydCI6MTYsICJhdCI6MTY6MD"
+}
