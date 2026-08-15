@@ -5,8 +5,7 @@
 // Derives the inactive reason from observation history and checks the safety
 // ratio before deactivation.
 
-import { type ArtifactRow } from "./artifact-schema";
-import { classifyObservation, deriveInactiveReason } from "./verify-attempt";
+import { classifyObservation, deriveInactiveReason, type ObservationVerdict } from "./verify-attempt";
 
 /** Maximum percentage of candidates that Pruner may deactivate without blocking. */
 export const MAX_PRUNE_RATIO_PCT = 10;

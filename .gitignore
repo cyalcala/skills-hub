@@ -39,3 +39,7 @@ package-lock.yaml
 # Deployment artifacts
 dist/
 *.pages.dev
+
+# Local dev state
+.wrangler/
+.astro/

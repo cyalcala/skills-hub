@@ -6,9 +6,7 @@
 // > Never write raw SQL outside `apps/web/src/lib/`. This is a golden rule —
 //   index alignment and parameter safety can only be audited from this one file.
 
-import type { D1Database } from '@cloudflare/d1';
-
-import type { ArtifactRow as ArtifactRowInput } from "./artifact-schema";
+import type { ArtifactInput } from "./artifact-schema";
 import type { ScoreInput } from "./quality";
 
 // ---------------------------------------------------------------------------
@@ -232,39 +230,31 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Content hash — see SPEC-db.md: computed over normalized identity fields only
+// Slug derivation
 // ---------------------------------------------------------------------------
 
-/** Normalized fields for content_hash — sorted tags, no timestamps/stars. */
-export function computeContentHash(
-  kind: string,
-  name: string,
-  summary: string,
-  sourceUrl: string,
-  license: string,
-  tags: string[],
-): string {
-  const parts = [kind, name, summary, sourceUrl, license, ...tags.sort()];
-  // Simple deterministic hash — CRC-like, good enough for change detection.
-  let hash = 0;
-  for (let i = 0; i < parts.length; i++) {
-    const char = parts.charCodeAt(i);
-    hash = ((hash << 5) - hash + char) | 0; // es: 32-bit signed bitwise
-  }
-  return hash.toString(36);
+/** URL-safe slug from a display name. Stable: derive once, never regenerate. */
+export function slugifyName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120) || "artifact";
 }
 
 // ---------------------------------------------------------------------------
 // Ingest-friendly upsert
 // ---------------------------------------------------------------------------
 
-/** Insert or update a single artifact, keyed on source_url.
-//
-// Behaviour (per SPEC-ingest.md):
-//   — No row with this source_url          → INSERT, first_seen_at = now
-//   — Row exists, hash UNCHANGED           → UPDATE last_seen_at ONLY  → "unchanged"
-//   — Row exists, hash CHANGED             → UPDATE fields + last_seen_at,
-//                                             clear enriched_at → "updated"
+/**
+ * Insert or update a single artifact, keyed on source_url.
+ *
+ * Behaviour (per SPEC-ingest.md):
+ *   — No row with this source_url          → INSERT, first_seen_at = now
+ *   — Row exists, hash UNCHANGED           → UPDATE last_seen_at ONLY  → "unchanged"
+ *   — Row exists, hash CHANGED             → UPDATE fields + last_seen_at,
+ *                                           clear enriched_at → "updated"
+ */
 export async function upsertArtifact(
   db: D1Database,
   row: {
@@ -295,58 +285,120 @@ export async function upsertArtifact(
     inactive_reason?: string | null;
   },
 ): Promise<{ status: "inserted" | "unchanged" | "updated"; previousHash?: string }> {
-  const { results } = await db
+  const now = row.last_seen_at ?? new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  const isActive = row.is_active ?? 1;
+  const inactiveReason = row.is_active === 0 ? (row.inactive_reason ?? null) : null;
+
+  // Read the current row first so the outcome is honest: the spec's contract is
+  // `inserted` / `unchanged` / `updated`, and an atomic ON CONFLICT cannot tell
+  // those apart from `changes` alone. Callers hold the `ingest` run-lock, so the
+  // read-then-write window is safe in production.
+  const existing = await db
     .prepare(
-      `INSERT INTO artifacts (
-        kind, name, summary, description, source_url, repo_full_name,
-        repo_host, homepage_url, license, author, tags, categories,
-        install_target, version, stars, forks, quality_score, quality_breakdown,
-        content_hash, first_seen_at, last_seen_at, source_updated_at,
-        enriched_at, is_active, inactive_reason
-      ) VALUES (
-        ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23
+      `SELECT content_hash, is_active, enriched_at FROM artifacts WHERE source_url = ?1`,
+    )
+    .bind(row.source_url)
+    .first<{ content_hash: string; is_active: number; enriched_at: string | null }>();
+
+  if (!existing) {
+    // No row with this source_url → INSERT, first_seen_at = now
+    await db
+      .prepare(
+        `INSERT INTO artifacts (
+          kind, name, slug, summary, description, source_url, repo_full_name,
+          repo_host, homepage_url, license, author, tags, categories,
+          install_target, version, stars, forks, quality_score, quality_breakdown,
+          content_hash, first_seen_at, last_seen_at, source_updated_at,
+          enriched_at, is_active, inactive_reason
+        ) VALUES (
+          ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26
+        )`,
       )
-      ON CONFLICT(source_url) DO UPDATE SET
-        kind = excluded.kind,
-        name = excluded.name,
-        summary = excluded.summary,
-        description = excluded.description,
-        repo_full_name = excluded.repo_full_name,
-        repo_host = excluded.repo_host,
-        homepage_url = excluded.homepage_url,
-        license = excluded.license,
-        author = excluded.author,
-        tags = excluded.tags,
-        categories = excluded.categories,
-        install_target = excluded.install_target,
-        version = excluded.version,
-        stars = excluded.stars,
-        forks = excluded.forks,
-        quality_score = excluded.quality_score,
-        quality_breakdown = excluded.quality_breakdown,
-        content_hash = excluded.content_hash,
-        last_seen_at = excluded.last_seen_at,
-        source_updated_at = excluded.source_updated_at,
-        enriched_at = CASE
-          WHEN excluded.content_hash = artifacts.content_hash THEN artifacts.enriched_at
-          ELSE NULL
-        END,
-        is_active = CASE
-          WHEN excluded.is_active = 1 THEN 1
-          ELSE CASE WHEN excluded.inactive_reason IS NOT NULL THEN 0 ELSE artifacts.is_active END
-        END,
-        inactive_reason = CASE
-          WHEN excluded.is_active = 0 THEN excluded.inactive_reason
-          WHEN artifacts.is_active = 0 AND excluded.is_active = 1 THEN NULL
-          ELSE artifacts.inactive_reason
-        END`,
+      .bind(
+        row.kind,
+        row.name,
+        slugifyName(row.name),
+        row.summary,
+        row.description,
+        row.source_url,
+        row.repo_full_name,
+        row.repo_host,
+        row.homepage_url,
+        row.license,
+        row.author,
+        JSON.stringify(row.tags),
+        JSON.stringify(row.categories),
+        JSON.stringify(row.install_target),
+        row.version,
+        row.stars,
+        row.forks,
+        row.quality_score,
+        row.quality_breakdown,
+        row.content_hash,
+        row.first_seen_at ?? now,
+        now,
+        row.source_updated_at ?? null,
+        row.enriched_at ?? null,
+        isActive,
+        inactiveReason,
       )
+      .run();
+    return { status: "inserted" as const };
+  }
+
+  if (existing.content_hash === row.content_hash) {
+    // Hash UNCHANGED → touch last_seen_at only. Reactivate if it had been
+    // deactivated: the spec says things come back from the dead.
+    await db
+      .prepare(
+        `UPDATE artifacts
+            SET last_seen_at = ?1,
+                is_active = CASE
+                  WHEN ?2 = 1 THEN 1
+                  ELSE artifacts.is_active
+                END,
+                inactive_reason = CASE
+                  WHEN ?2 = 1 THEN NULL
+                  ELSE artifacts.inactive_reason
+                END
+          WHERE source_url = ?3`,
+      )
+      .bind(now, isActive, row.source_url)
+      .run();
+    return {
+      status: "unchanged" as const,
+      previousHash: existing.content_hash,
+    };
+  }
+
+  // Hash CHANGED → update fields + last_seen_at, clear enriched_at → "updated"
+  await db
+    .prepare(
+      `UPDATE artifacts SET
+         kind = ?2, name = ?3, summary = ?4, description = ?5,
+         repo_full_name = ?6, repo_host = ?7, homepage_url = ?8,
+         license = ?9, author = ?10, tags = ?11, categories = ?12,
+         install_target = ?13, version = ?14, stars = ?15, forks = ?16,
+         quality_score = ?17, quality_breakdown = ?18, content_hash = ?19,
+         last_seen_at = ?20, source_updated_at = ?21,
+         enriched_at = NULL,
+         is_active = CASE
+           WHEN ?22 = 1 THEN 1
+           ELSE CASE WHEN ?23 IS NOT NULL THEN 0 ELSE artifacts.is_active END
+         END,
+         inactive_reason = CASE
+           WHEN ?22 = 0 THEN ?23
+           WHEN artifacts.is_active = 0 THEN NULL
+           ELSE artifacts.inactive_reason
+         END
+       WHERE source_url = ?1`,
+    )
     .bind(
+      row.source_url,
       row.kind,
       row.name,
       row.summary,
       row.description,
-      row.source_url,
       row.repo_full_name,
       row.repo_host,
       row.homepage_url,
@@ -361,23 +413,16 @@ export async function upsertArtifact(
       row.quality_score,
       row.quality_breakdown,
       row.content_hash,
-      row.first_seen_at,
-      row.last_seen_at,
-      row.source_updated_at,
-      row.enriched_at,
-      row.is_active,
-      row.inactive_reason,
+      now,
+      row.source_updated_at ?? null,
+      isActive,
+      inactiveReason,
     )
     .run();
-
-  // Determine status from the changes we can observe
-  // If the row was newly inserted, the content_hash was not previously in the DB.
-  // If the hash matched, it's "unchanged". If it changed, it's "updated".
-  // We infer from the meta information available in the run log.
-
-  // For now, return a basic status — the full outcome tracking is handled by
-  // the ingest-batch layer which calls this within a chunked upsert.
-  return { status: "inserted" as const };
+  return {
+    status: "updated" as const,
+    previousHash: existing.content_hash,
+  };
 }
 
 // ---------------------------------------------------------------------------

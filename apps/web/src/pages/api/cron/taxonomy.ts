@@ -1,47 +1,40 @@
 import { Hono } from "hono";
 import { type Context } from "hono";
-import { db } from "../../src/lib/db";
+import { listCategories } from "../../../lib/db";
 
 const app = new Hono();
 
-/** POST /api/cron/taxonomy */
+/** POST /api/cron/taxonomy - Full taxonomy recount */
 app.post("/", async (c: Context) => {
-  // Recalculate artifact counts for each category
-  // Get all categories
-  const categories = await db.prepare(
-    `SELECT id, slug, kind FROM categories ORDER BY slug`
-  )
-    .all();
+  const DB = c.env.DB as D1Database;
 
-  let recounted = 0;
-  let driftCorrected = 0;
+  // Recount artifact_count from scratch for each category
+  // This never increments ad hoc — the Cartographer recalculates weekly
 
-  if (categories?.results) {
-    for (const cat of categories.results as any[]) {
-      // Count artifacts in this category that are active and match the kind
-      const countResult = await db.prepare(
-        `SELECT COUNT(*) as count FROM artifacts WHERE is_active = 1 AND categories LIKE ?1`,
-      )
-        .bind(`%${cat.slug}%`)
-        .first();
+  // Get all categories with current counts
+  const categories = await listCategories(DB);
 
-      const newCount = countResult?.count ?? 0;
+  for (const category of categories) {
+    const slug = category.slug;
 
-      // Update the category count
-      await db.prepare(
-        `UPDATE categories SET artifact_count = ?1, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id = ?2`,
-      )
-        .bind(newCount, cat.id)
-        .run();
+    const row = await DB.prepare(`
+      SELECT COUNT(*) as count
+      FROM artifacts
+      WHERE is_active = 1
+      AND categories LIKE ?1
+    `).bind(`%${slug}%`).first<{ count: number }>();
 
-      // If the count changed, record drift
-      // In a real implementation, we'd compare with the previous count
-      // For now, we just count how many were recounted
-      recounted++;
-    }
+    const count = row?.count ?? 0;
+
+    // Update the category with the correct count
+    await DB.prepare(
+      `UPDATE categories SET artifact_count = ?1, updated_at = ?2 WHERE slug = ?3`,
+    )
+      .bind(count, new Date().toISOString(), slug)
+      .run();
   }
 
-  return c.json({ categories: categories?.length ?? 0, recounted, driftCorrected });
+  return c.json({ recounted: categories.length });
 });
 
 export default app;

@@ -34,11 +34,9 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
-        continue-on-error: true # TODO: flip to false once P1–P2 land
 
       - name: Build
         run: npm run build
-        continue-on-error: true # TODO: flip to false once the web module lands
 
       - name: Secret scan
         run: |

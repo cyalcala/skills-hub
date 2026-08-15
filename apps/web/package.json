@@ -16,10 +16,13 @@
     "deploy": "npm run build && wrangler pages deploy dist --project-name skills-hub --branch main --config wrangler.jsonc"
   },
   "dependencies": {
+    "@astrojs/check": "^0.9.10",
     "@astrojs/cloudflare": "^12.6.13",
     "@astrojs/react": "^4.4.2",
     "@astrojs/tailwind": "^5.1.5",
+    "@cloudflare/d1": "^1.4.1",
     "astro": "^5.18.2",
+    "hono": "^4.13.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tailwindcss": "^3.4.19"

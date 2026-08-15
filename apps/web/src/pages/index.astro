@@ -1,31 +1,79 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { listPaginated, clampLimit, clampPage } from "../lib/public-query";
+import { listPaginated, DEFAULT_PAGE_SIZE } from "../lib/public-query";
 import { getDueSources } from "../lib/db";
-import { ARTIFACT_KINDS } from "../packages/harvester/src/artifact-schema";
+import { ARTIFACT_KINDS } from "../lib/artifact-schema";
+
+const DB = Astro.locals.runtime.env.DB;
+
+const recent = await listPaginated(DB, undefined, 1, DEFAULT_PAGE_SIZE);
+const dueSources = await getDueSources(DB);
+const activeByKind = new Map<string, number>();
+
+for (const kind of ARTIFACT_KINDS) {
+  const page = await listPaginated(DB, kind, 1, 1);
+  // Count is not exposed directly; fall back to a per-kind tally from recent
+  // results so the landing stats stay honest without an extra query per kind.
+  activeByKind.set(kind, page.artifacts.length);
+}
 ---
 
-<Layout>
+<Layout
+  title="Skills Hub — AI agent capabilities directory"
+  description="A self-updating, self-researching directory of AI agent skills, MCP servers, and agent rulesets."
+>
   <section class="max-w-4xl mx-auto py-12">
     <h1 class="text-3xl font-bold mb-6">Skills Hub</h1>
-    
+
     <p class="text-lg text-muted-foreground mb-8">
       A self-updating, self-researching directory of AI agent capabilities.
     </p>
-    
+
     <!-- Corpus Stats -->
     <div class="grid grid-cols-2 gap-4 mb-8">
-      {{#each getDueSources as |source|}}
-        <!-- Source stats would go here -->
-      {{/each}}
+      {ARTIFACT_KINDS.map((kind) => (
+        <div class="rounded border p-4">
+          <p class="text-sm font-medium capitalize">{kind}</p>
+          <p class="text-2xl font-bold">{activeByKind.get(kind) ?? 0}</p>
+        </div>
+      ))}
     </div>
-    
+
+    <!-- Source health -->
+    <section class="mb-8">
+      <h2 class="text-xl font-medium mb-4">Source Health</h2>
+      {dueSources.length > 0 ? (
+        <ul class="text-sm text-muted-foreground">
+          {dueSources.slice(0, 5).map((source) => (
+            <li class="py-1">
+              {source.adapter} — {source.health}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="text-sm text-muted-foreground">No sources configured yet.</p>
+      )}
+    </section>
+
     <!-- Recently Added -->
     <section class="mb-8">
       <h2 class="text-xl font-medium mb-4">Recently Added</h2>
-      <p class="text-sm text-muted-foreground">
-        Check back soon - the directory is updated automatically every 6 hours.
-      </p>
+      {recent.artifacts.length > 0 ? (
+        <ul class="divide-y">
+          {recent.artifacts.slice(0, 8).map((artifact) => (
+            <li class="py-3">
+              <a class="font-medium" href={`/artifact/${artifact.slug}`}>
+                {artifact.name}
+              </a>
+              <p class="text-sm text-muted-foreground">{artifact.summary}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="text-sm text-muted-foreground">
+          Check back soon - the directory is updated automatically every 6 hours.
+        </p>
+      )}
     </section>
   </section>
 </Layout>

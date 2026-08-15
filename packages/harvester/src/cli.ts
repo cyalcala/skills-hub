@@ -1,7 +1,10 @@
-import { createRobotsCache, type RobotsParser } from "./src/lib/robots";
-import { runAdapter, type Adapter, type AdapterResult, type HarvestReport, type ArtifactKind } from "./src/registry";
-import { parseFrontmatter } from "./src/lib/frontmatter";
-import { type ArtifactInput } from "./src/artifact-schema";
+import { createRobotsCache, type RobotsParser } from "./lib/robots";
+import { runAdapter, type Adapter, type AdapterResult, type HarvestReport, type ArtifactKind } from "./registry";
+import { parseFrontmatter } from "./lib/frontmatter";
+import { type ArtifactInput } from "./artifact-schema";
+import { githubCodeSearchAdapter } from "./adapters/github-code-search";
+import { mcpRegistryAdapter } from "./adapters/mcp-registry";
+import { awesomeListAdapter } from "./adapters/awesome-list";
 
 // ---------------------------------------------------------------------------
 // CLI: orchestrates harvesting from all enabled sources
@@ -93,9 +96,9 @@ async function main() {
 
   // Define the three P3 adapters
   const adapters: Map<string, Adapter> = new Map();
-  adapters.set("github-code-search", require("./src/adapters/github-code-search").githubCodeSearchAdapter("ghp_test_token"));
-  adapters.set("mcp-registry", require("./src/adapters/mcp-registry").mcpRegistryAdapter());
-  adapters.set("awesome-list", require("./src/adapters/awesome-list").awesomeListAdapter());
+  adapters.set("github-code-search", githubCodeSearchAdapter("ghp_test_token"));
+  adapters.set("mcp-registry", mcpRegistryAdapter());
+  adapters.set("awesome-list", awesomeListAdapter());
 
   // Define sources (in production these would come from D1)
   // For now, using hardcoded sources for the demo
@@ -115,8 +118,8 @@ async function main() {
   };
 
   for (const source of sources) {
-    const AdapterClass = adapters.get(source.adapter);
-    if (!AdapterClass) {
+    const adapter = adapters.get(source.adapter);
+    if (!adapter) {
       report.sources.push({
         adapter: source.adapter,
         locator: source.locator,
@@ -129,7 +132,6 @@ async function main() {
       continue;
     }
 
-    const adapter = new AdapterClass();
     const logger = {
       info: (level: string, msg: string, meta?: unknown) => {
         console.log(`[${level}] ${msg}`);

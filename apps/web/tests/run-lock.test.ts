@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
 import { acquireLock, releaseLock, isExpired, holderId, DEFAULT_TTL_SECONDS } from "../src/lib/run-lock";
+import { createMigratedD1 } from "./helpers/d1";
 
 describe("isExpired", () => {
   it("returns false for a non-expired lock", () => {
@@ -34,11 +35,17 @@ describe("DEFAULT_TTL_SECONDS", () => {
   });
 });
 
-/* ── Integration tests (run with: npx wrangler d1 migrations apply DB --local && npx vitest run) ────*/
+/* ── Integration tests (run with: npx vitest run) ────────────────────────────*/
+
+const harness = await createMigratedD1();
+
+afterAll(async () => {
+  await harness.dispose();
+});
 
 describe("acquireLock & releaseLock (integration)", () => {
   it("acquires a lock and releases it", async () => {
-    const { DB } = (await import("../src/lib/db")).default;
+    const DB = harness.db;
     const now = new Date();
     const result = await acquireLock(DB, "test-lock-1", "test-agent", now);
     expect(result.acquired).toBe(true);
@@ -52,7 +59,7 @@ describe("acquireLock & releaseLock (integration)", () => {
   });
 
   it("prevents two holders simultaneously", async () => {
-    const { DB } = (await import("../src/lib/db")).default;
+    const DB = harness.db;
     const now = new Date();
 
     // Acquire first lock
@@ -73,7 +80,7 @@ describe("acquireLock & releaseLock (integration)", () => {
   });
 
   it("TTL expiration works correctly", async () => {
-    const { DB } = (await import("../src/lib/db")).default;
+    const DB = harness.db;
     const now = new Date();
     // Set a very short TTL by using a past now + short ttl
     const result = await acquireLock(DB, "test-lock-3", "agent-X", now, 1); // 1 second TTL

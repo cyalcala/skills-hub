@@ -94,7 +94,7 @@ export function deriveInactiveReason(
   }
 
   // Check staleness independently - if last_seen_at is older than 180 days
-  if (lastSeenAtDaysOld > 180 && !reason) {
+  if (lastSeenAtDaysOld !== null && lastSeenAtDaysOld > 180 && !reason) {
     // Staleness is a separate reason; if we already have a reason,
     // we keep the existing one (terminal takes priority over stale)
     if (!reason) {
@@ -104,5 +104,3 @@ export function deriveInactiveReason(
 
   return { reason, isTerminal };
 }
-
-export { ObservationVerdict, Observation, classifyObservation, deriveInactiveReason };

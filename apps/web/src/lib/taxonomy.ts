@@ -89,5 +89,3 @@ export function mapToCategories(
   // Deduplicate
   return [...new Set(categories)];
 }
-
-export { CategorySlug, mapToCategories };
