@@ -1,11 +1,12 @@
 import { Hono } from "hono";
 import { type Context } from "hono";
+import type { APIContext } from "astro";
 import { scoreArtifact } from "../../../lib/quality";
 import { listUnenriched } from "../../../lib/db";
 import { mapToCategories } from "../../../lib/taxonomy";
 import { enrichArtifact } from "../../../lib/enrich-fetch";
 
-const app = new Hono();
+const app = new Hono().basePath("/api/cron/curate");
 
 type CurateBody = {
   limit?: number;
@@ -93,4 +94,4 @@ app.post("/", async (c: Context) => {
   return c.json({ enriched, skipped: artifacts.length - enriched });
 });
 
-export default app;
+export const POST = (context: APIContext) => app.fetch(context.request, context.locals.runtime.env);

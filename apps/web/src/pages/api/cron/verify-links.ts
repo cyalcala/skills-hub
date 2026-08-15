@@ -1,9 +1,11 @@
 import { Hono } from "hono";
 import { type Context } from "hono";
-import { classifyObservation, deriveInactiveReason } from "../../../lib/verify-attempt";
+import type { APIContext } from "astro";
+import type { D1Database } from "@cloudflare/workers-types";
+import { classifyObservation } from "../../../lib/verify-attempt";
 import { checkSafetyRatio } from "../../../lib/inactive-reason";
 
-const app = new Hono();
+const app = new Hono().basePath("/api/cron/verify-links");
 
 type VerifyBody = {
   batchSize?: number;
@@ -101,4 +103,4 @@ app.post("/", async (c: Context) => {
   });
 });
 
-export default app;
+export const POST = (context: APIContext) => app.fetch(context.request, context.locals.runtime.env);

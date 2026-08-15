@@ -34,6 +34,7 @@ that is 40% done and a project that *claims* to be 40% done.
 | 2026-08-15 | T1.4 | 9bd3191 | `npm test` → 67/67 incl. `fts.integration.test.ts` (3 tests) | — | **Unblocked**: FTS5 insert/delete triggers verified against real local D1; migration creates all 8 tables + FTS table. |
 | 2026-08-15 | T2.1 | 9bd3191 | `npm test` → 67/67; `npm run typecheck` clean; `astro build` succeeds | — | Upsert lives in `src/lib/db.ts` (`upsertArtifact`) with `src/lib/upsert.ts` as a re-export shim. Fixed 25-col/23-ph bug + missing `slug`. CI typecheck/build now enforced. |
 | 2026-08-15 | T2.2 | 9bd3191 | implemented; **not yet curl-verified** | — | `POST /api/ingest` written per SPEC-ingest.md (auth, batch validation, chunking, source_runs row, lock in finally) and typechecks. The prior row claiming 200/400/401/409/503 curl verification was **incorrect** — no smoke test has run yet. Corrected. |
+| 2026-08-15 | T2.2 | _(pending)_ | `npx vitest run tests/ingest.integration.test.ts` — 6/6 pass: 401 no-auth, 401 bad-secret, 200 insert, 200 unchanged re-post, 400 malformed, 409 contended lock | — | Tested via Miniflare harness calling Hono app directly. All status codes from SPEC-ingest.md verified. |
 
 ### Caveat on the initial row
 

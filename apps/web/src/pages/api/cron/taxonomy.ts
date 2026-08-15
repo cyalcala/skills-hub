@@ -1,8 +1,10 @@
 import { Hono } from "hono";
 import { type Context } from "hono";
+import type { APIContext } from "astro";
+import type { D1Database } from "@cloudflare/workers-types";
 import { listCategories } from "../../../lib/db";
 
-const app = new Hono();
+const app = new Hono().basePath("/api/cron/taxonomy");
 
 /** POST /api/cron/taxonomy - Full taxonomy recount */
 app.post("/", async (c: Context) => {
@@ -37,4 +39,4 @@ app.post("/", async (c: Context) => {
   return c.json({ recounted: categories.length });
 });
 
-export default app;
+export const POST = (context: APIContext) => app.fetch(context.request, context.locals.runtime.env);

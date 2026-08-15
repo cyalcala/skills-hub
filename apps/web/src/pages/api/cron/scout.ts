@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import { type Context } from "hono";
+import type { APIContext } from "astro";
+import type { D1Database } from "@cloudflare/workers-types";
 
-const app = new Hono();
+const app = new Hono().basePath("/api/cron/scout");
 
 type ScoutBody = {
   limit?: number;
@@ -56,4 +58,4 @@ app.post("/", async (c: Context) => {
   });
 });
 
-export default app;
+export const POST = (context: APIContext) => app.fetch(context.request, context.locals.runtime.env);

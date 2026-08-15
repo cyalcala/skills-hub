@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { type Context } from "hono";
+import type { APIContext } from "astro";
 import { isAuthorized } from "../../lib/auth";
 import { validateIngestBody, type ArtifactKind } from "../../lib/artifact-schema";
 import { chunkByVariableBudget, MAX_SQL_VARIABLES } from "../../lib/ingest-batch";
@@ -7,7 +8,7 @@ import { upsertArtifact } from "../../lib/upsert";
 import { acquireLock, releaseLock, holderId } from "../../lib/run-lock";
 import { computeContentHash } from "../../lib/content-hash";
 
-const app = new Hono();
+const app = new Hono().basePath("/api/ingest");
 
 // Maximum artifacts per single API call per SPEC-ingest.md
 const MAX_ARTIFACTS = 500;
@@ -216,4 +217,6 @@ app.post(
   },
 );
 
-export default app;
+export const POST = (context: APIContext) => app.fetch(context.request, context.locals.runtime.env);
+
+export { app };
