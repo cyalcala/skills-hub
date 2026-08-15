@@ -66,24 +66,24 @@ Legend: `[ ]` open · `[x]` done · **S/M/L** = task size (see
   - Files: `apps/web/src/lib/upsert.ts`
   - Depends: T1.2
 
-- [ ] **T2.2** — `POST /api/ingest` endpoint · **M**
+- [x] **T2.2** — `POST /api/ingest` endpoint · **M**
   - Acceptance: 200/400/401/409/503 exactly as specified; one `source_runs` row per call; lock released in `finally`
-  - Verify: local `curl` smoke covering each status code
+  - Verify: `npx vitest run tests/ingest.integration.test.ts` (6/6 pass)
   - Files: `apps/web/src/pages/api/ingest.ts`
   - Depends: T2.1, T1.3
 
-- [ ] **T2.3** — >1000-row batch regression test · **S**
+- [x] **T2.3** — >1000-row batch regression test · **S**
   - Acceptance: a 1000-artifact batch inserts every row exactly once, chunked, with no `too many SQL variables` error
   - Verify: integration test against local D1
   - Depends: T2.2
   - Note: this is the model repo's production bug. Do not skip it.
 
-- [ ] **T2.4** — `POST /api/cron/scout` due-source selection · **S**
+- [x] **T2.4** — `POST /api/cron/scout` due-source selection · **S**
   - Acceptance: returns only enabled sources past their cadence; stamps `last_run_at`
   - Depends: T2.2
 
 ### ✅ Checkpoint P2
-- [ ] Idempotency proven (post twice → all `unchanged`) · [ ] 1000-row batch passes · [ ] all status codes verified · [ ] status row recorded
+- [x] Idempotency proven (post twice → all `unchanged`) · [x] 1000-row batch passes · [x] all status codes verified · [x] Scout due-source selection works · [ ] status row recorded
 
 ---
 

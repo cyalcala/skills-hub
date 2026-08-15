@@ -166,9 +166,10 @@ export async function listUnenriched(
   return results ?? [];
 }
 
-/** Source due for a run (enabled + past cadence). */
+/** Source due for a run (enabled + past cadence). Returns up to `limit` rows. */
 export async function getDueSources(
   db: D1Database,
+  limit: number = 100,
 ): Promise<SourceRow[]> {
   const { results } = await db
     .prepare(
@@ -176,10 +177,32 @@ export async function getDueSources(
                last_run_at, last_cursor, consecutive_failures, health, notes,
                created_at
           FROM sources
-         WHERE enabled = 1`,
+         WHERE enabled = 1
+           AND (last_run_at IS NULL
+                OR datetime(last_run_at, '+' || cadence_hours || ' hours') <= datetime('now'))
+         ORDER BY last_run_at ASC
+         LIMIT ?1`,
     )
+    .bind(limit)
     .all<SourceRow>();
   return results ?? [];
+}
+
+/**
+ * Stamp last_run_at for a list of source ids. Called by the Scout endpoint
+ * after selecting due sources.
+ */
+export async function stampSourceRun(
+  db: D1Database,
+  sourceIds: number[],
+  nowIso: string,
+): Promise<void> {
+  for (const id of sourceIds) {
+    await db
+      .prepare(`UPDATE sources SET last_run_at = ?1 WHERE id = ?2`)
+      .bind(nowIso, id)
+      .run();
+  }
 }
 
 // ---------------------------------------------------------------------------
