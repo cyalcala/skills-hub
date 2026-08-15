@@ -1,0 +1,19 @@
+{
+  "name": "@skills-hub/harvester",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Source adapters and harvest CLI for Skills Hub",
+  "type": "module",
+  "scripts": {
+    "harvest": "node packages/harvester/src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@skills-hub/web": "0.1.0"
+  }
+}

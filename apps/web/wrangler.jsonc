@@ -1,0 +1,29 @@
+{
+  // Cloudflare Pages + D1 configuration for Skills Hub.
+  //
+  // The `database_id` below is a PLACEHOLDER. Create the real database and
+  // paste its id here — see docs/RUNBOOK-CLOUDFLARE.md step 2. Nothing in this
+  // repo will talk to a real Cloudflare account until you do.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "skills-hub",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "pages_build_output_dir": "dist",
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "skills-hub-db",
+      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Secrets are NOT set here. Set them with:
+  //   wrangler pages secret put PROXY_SECRET --project-name skills-hub
+  // Committing a secret to this file would publish it — see .env.example.
+  "vars": {
+    "PUBLIC_SITE_URL": "https://skills-hub.pages.dev",
+    "PUBLIC_SITE_NAME": "Skills Hub"
+  }
+}

@@ -1,0 +1,141 @@
+name: 🔭 Scout Pulse (discover)
+
+# Scout discovers new artifacts from enabled sources and POSTs them to the
+# ingest API. It is the only agent that adds rows.
+#
+# This workflow is the TEMPLATE the other five follow. If you change the
+# structure here, mirror it there. Contract: specs/SPEC-pulse.md
+
+on:
+  schedule:
+    # Every 6 hours, offset off the hour. Cron at :00 is the busiest slot on
+    # GitHub's shared runners and gets queued; :17 starts promptly.
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      adapter:
+        description: "Run a single adapter only (blank = all enabled sources)"
+        required: false
+        default: ""
+        type: string
+      dry_run:
+        description: "Discover and log, but do not POST to ingest"
+        required: false
+        default: false
+        type: boolean
+
+# Two Scouts writing at once would double-insert and race the run lock.
+# cancel-in-progress is FALSE on purpose: a partially-complete harvest that
+# gets killed mid-batch leaves worse state than one that finishes late.
+concurrency:
+  group: gha-scout-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # A run that discovers nothing across EVERY source is a failure, not a quiet
+  # success. This is the guard against green-CI-hiding-broken-adapters, which
+  # the model repo's audit called out as its most dangerous failure mode.
+  MIN_TOTAL_ACCEPTED: "1"
+  # How many individual source failures to tolerate before failing the run.
+  SOURCE_FAILURE_FAIL_THRESHOLD: "3"
+
+jobs:
+  scout:
+    name: Discover new artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
+      INGEST_API_URL: ${{ vars.INGEST_API_URL || 'https://skills-hub.pages.dev/api/ingest' }}
+      SCOUT_API_URL: ${{ vars.SCOUT_API_URL || 'https://skills-hub.pages.dev/api/cron/scout' }}
+      # Authenticated GitHub API calls get 5000 req/h instead of 60.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ADAPTER_FILTER: ${{ inputs.adapter }}
+      DRY_RUN: ${{ inputs.dry_run }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Preflight — required secrets present
+        run: |
+          # Fail fast and loud. A missing secret otherwise surfaces as a
+          # confusing 401 twenty minutes into the run.
+          if [ -z "$PROXY_SECRET" ]; then
+            echo "::error::PROXY_SECRET is not set. See docs/RUNBOOK-CLOUDFLARE.md step 5."
+            exit 1
+          fi
+          echo "Secrets present."
+
+      - name: 🔭 Run Scout
+        id: scout
+        run: |
+          set -o pipefail
+          npm run harvest --workspace @skills-hub/harvester -- \
+            --agent scout \
+            ${ADAPTER_FILTER:+--adapter "$ADAPTER_FILTER"} \
+            ${DRY_RUN:+--dry-run} \
+            --report scout-report.json | tee scout.log
+
+      - name: Evaluate outcome
+        run: |
+          # The report is the contract between the harvester CLI and this
+          # workflow. Its shape is defined in specs/SPEC-harvest.md.
+          if [ ! -f scout-report.json ]; then
+            echo "::error::Scout produced no report. Treating as failure."
+            exit 1
+          fi
+
+          ACCEPTED=$(jq -r '.totals.accepted // 0' scout-report.json)
+          REJECTED=$(jq -r '.totals.rejected // 0' scout-report.json)
+          FAILED_SOURCES=$(jq -r '.totals.failedSources // 0' scout-report.json)
+
+          echo "### 🔭 Scout Pulse" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---:|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Accepted | $ACCEPTED |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Rejected | $REJECTED |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Failed sources | $FAILED_SOURCES |" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Dry run — skipping threshold checks."
+            exit 0
+          fi
+
+          if [ "$FAILED_SOURCES" -gt "$SOURCE_FAILURE_FAIL_THRESHOLD" ]; then
+            echo "::error::$FAILED_SOURCES sources failed, over threshold $SOURCE_FAILURE_FAIL_THRESHOLD."
+            exit 1
+          fi
+
+          if [ "$ACCEPTED" -lt "$MIN_TOTAL_ACCEPTED" ]; then
+            echo "::error::Accepted $ACCEPTED artifacts, below minimum $MIN_TOTAL_ACCEPTED. Adapters are likely broken."
+            exit 1
+          fi
+
+          echo "Scout healthy."
+
+      - name: Upload run evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scout-evidence-${{ github.run_id }}
+          path: |
+            scout-report.json
+            scout.log
+          retention-days: 14
+          if-no-files-found: warn

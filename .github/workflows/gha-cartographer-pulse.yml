@@ -1,0 +1,95 @@
+name: 🗺️ Cartographer Pulse (taxonomy)
+
+# Cartographer rebuilds the category taxonomy and RECOUNTS artifact_count from
+# scratch. Counts are never incremented ad hoc anywhere else in the system —
+# incremental counters drift, and a wrong count on a category page is the kind
+# of small lie that erodes trust in the whole index.
+# Contract: specs/SPEC-enrich.md
+
+on:
+  schedule:
+    - cron: "37 6 * * 1" # weekly, Monday 06:37 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: gha-cartographer-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  map:
+    name: Rebuild taxonomy and recount
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
+      TAXONOMY_API_URL: ${{ vars.TAXONOMY_API_URL || 'https://skills-hub.pages.dev/api/cron/taxonomy' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: "npm" }
+
+      - run: npm ci
+
+      - name: Preflight
+        run: |
+          if [ -z "$PROXY_SECRET" ]; then
+            echo "::error::PROXY_SECRET is not set. See docs/RUNBOOK-CLOUDFLARE.md step 5."
+            exit 1
+          fi
+
+      - name: 🗺️ Run Cartographer
+        run: |
+          set -o pipefail
+          HTTP_CODE=$(curl -sS -w "%{http_code}" -o taxonomy-report.json \
+            -X POST "$TAXONOMY_API_URL" \
+            -H "Authorization: Bearer $PROXY_SECRET" \
+            -H "Content-Type: application/json")
+
+          echo "HTTP $HTTP_CODE"
+          cat taxonomy-report.json
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Taxonomy endpoint returned $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Evaluate outcome
+        run: |
+          CATEGORIES=$(jq -r '.categories // 0' taxonomy-report.json)
+          RECOUNTED=$(jq -r '.recounted // 0' taxonomy-report.json)
+          DRIFT=$(jq -r '.driftCorrected // 0' taxonomy-report.json)
+
+          {
+            echo "### 🗺️ Cartographer Pulse"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|---|---:|"
+            echo "| Categories | $CATEGORIES |"
+            echo "| Recounted | $RECOUNTED |"
+            echo "| Drift corrected | $DRIFT |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Drift is expected to be zero once the system is correct. Persistent
+          # nonzero drift means something IS incrementing counts elsewhere.
+          if [ "$DRIFT" -gt 0 ]; then
+            echo "::warning::Corrected drift on $DRIFT categories — find what is mutating artifact_count outside Cartographer."
+          fi
+
+          if [ "$CATEGORIES" -eq 0 ]; then
+            echo "::error::Taxonomy rebuilt to zero categories. Refusing to call that success."
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cartographer-evidence-${{ github.run_id }}
+          path: taxonomy-report.json
+          retention-days: 14
+          if-no-files-found: warn

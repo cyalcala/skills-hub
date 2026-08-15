@@ -1,0 +1,41 @@
+# Azure/Windows system files
+$Recycle.Bin/
+$WinREAgent/
+777/
+DumpStack.log*
+DumpStack.log.tmp
+Focusee/
+Program Files (x86)/
+Program Files/
+ProgramData/
+Publishing/
+Recovery/
+Saved Pictures/
+SystemReport_20241227.html
+/
+Windows/
+bootTel.dat
+coverletter7/
+ffmpeg/
+hiberfil.sys
+maintenance_log_20241227_212029.txt
+mnt/
+pagefile.sys
+rpa/
+snappr.docx
+snappr.txt
+swapfile.sys
+tmp/
+zig/
+
+# Dependencies
+node_modules/
+package-lock.yaml
+
+# Local environment
+.env.local
+.env.*.local
+
+# Deployment artifacts
+dist/
+*.pages.dev

@@ -1,0 +1,27 @@
+{
+  "name": "skills-hub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A self-updating, self-researching directory of AI agent skills, MCP servers, and agent rulesets.",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @skills-hub/web",
+    "build": "npm run build --workspace @skills-hub/web",
+    "test": "npm run test --workspace @skills-hub/web",
+    "typecheck": "npm run typecheck --workspace @skills-hub/web",
+    "db:migrate:local": "npm run db:migrate:local --workspace @skills-hub/web",
+    "db:migrate": "npm run db:migrate --workspace @skills-hub/web",
+    "harvest": "npm run harvest --workspace @skills-hub/harvester"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

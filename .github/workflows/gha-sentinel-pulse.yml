@@ -1,0 +1,109 @@
+name: 🛡️ Sentinel Pulse (link health)
+
+# Sentinel HTTP-checks the oldest-checked slice of active artifacts and records
+# status, latency, and reason. It marks nothing inactive — that is Pruner's job,
+# and separating detection from deactivation means a bad Sentinel run cannot
+# wipe the corpus. Contract: specs/SPEC-verify.md
+
+on:
+  schedule:
+    - cron: "41 5 * * *" # daily, 05:41 UTC
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: "How many artifacts to check this run"
+        required: false
+        default: "300"
+        type: string
+
+concurrency:
+  group: gha-sentinel-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # If more than this fraction of checks fail, something is wrong with US (our
+  # egress, a bad deploy) rather than with the whole internet. Fail loudly
+  # instead of recording hundreds of bogus failures that Pruner will act on.
+  MAX_FAILURE_RATIO_PCT: "40"
+
+jobs:
+  sentinel:
+    name: Check artifact links
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
+      VERIFY_API_URL: ${{ vars.VERIFY_API_URL || 'https://skills-hub.pages.dev/api/cron/verify-links' }}
+      BATCH_SIZE: ${{ inputs.batch_size || '300' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: "npm" }
+
+      - run: npm ci
+
+      - name: Preflight
+        run: |
+          if [ -z "$PROXY_SECRET" ]; then
+            echo "::error::PROXY_SECRET is not set. See docs/RUNBOOK-CLOUDFLARE.md step 5."
+            exit 1
+          fi
+
+      - name: 🛡️ Run Sentinel
+        run: |
+          set -o pipefail
+          HTTP_CODE=$(curl -sS -w "%{http_code}" -o verify-report.json \
+            -X POST "$VERIFY_API_URL" \
+            -H "Authorization: Bearer $PROXY_SECRET" \
+            -H "Content-Type: application/json" \
+            -d "{\"batchSize\": $BATCH_SIZE}")
+
+          echo "HTTP $HTTP_CODE"
+          cat verify-report.json
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Verify endpoint returned $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Evaluate outcome
+        run: |
+          CHECKED=$(jq -r '.checked // 0' verify-report.json)
+          OK=$(jq -r '.ok // 0' verify-report.json)
+          FAILED=$(jq -r '.failed // 0' verify-report.json)
+
+          {
+            echo "### 🛡️ Sentinel Pulse"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|---|---:|"
+            echo "| Checked | $CHECKED |"
+            echo "| OK | $OK |"
+            echo "| Failed | $FAILED |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$CHECKED" -eq 0 ]; then
+            echo "Nothing due for checking."
+            exit 0
+          fi
+
+          RATIO=$(( FAILED * 100 / CHECKED ))
+          echo "Failure ratio: ${RATIO}%"
+          if [ "$RATIO" -gt "$MAX_FAILURE_RATIO_PCT" ]; then
+            echo "::error::${RATIO}% of checks failed, over ${MAX_FAILURE_RATIO_PCT}%. Suspect our egress, not the sources."
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sentinel-evidence-${{ github.run_id }}
+          path: verify-report.json
+          retention-days: 14
+          if-no-files-found: warn
