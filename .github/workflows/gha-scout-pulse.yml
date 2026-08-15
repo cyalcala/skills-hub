@@ -49,8 +49,8 @@ jobs:
     timeout-minutes: 20
     env:
       PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
-      INGEST_API_URL: ${{ vars.INGEST_API_URL || 'https://skills-hub.pages.dev/api/ingest' }}
-      SCOUT_API_URL: ${{ vars.SCOUT_API_URL || 'https://skills-hub.pages.dev/api/cron/scout' }}
+      INGEST_API_URL: ${{ vars.INGEST_API_URL || 'https://aiskills-hub.pages.dev/api/ingest' }}
+      SCOUT_API_URL: ${{ vars.SCOUT_API_URL || 'https://aiskills-hub.pages.dev/api/cron/scout' }}
       # Authenticated GitHub API calls get 5000 req/h instead of 60.
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       ADAPTER_FILTER: ${{ inputs.adapter }}

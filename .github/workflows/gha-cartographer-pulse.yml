@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 15
     env:
       PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
-      TAXONOMY_API_URL: ${{ vars.TAXONOMY_API_URL || 'https://skills-hub.pages.dev/api/cron/taxonomy' }}
+      TAXONOMY_API_URL: ${{ vars.TAXONOMY_API_URL || 'https://aiskills-hub.pages.dev/api/cron/taxonomy' }}
 
     steps:
       - uses: actions/checkout@v4

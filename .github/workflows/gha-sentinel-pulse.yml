@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 25
     env:
       PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
-      VERIFY_API_URL: ${{ vars.VERIFY_API_URL || 'https://skills-hub.pages.dev/api/cron/verify-links' }}
+      VERIFY_API_URL: ${{ vars.VERIFY_API_URL || 'https://aiskills-hub.pages.dev/api/cron/verify-links' }}
       BATCH_SIZE: ${{ inputs.batch_size || '300' }}
 
     steps:

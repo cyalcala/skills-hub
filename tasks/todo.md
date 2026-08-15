@@ -175,7 +175,7 @@ Legend: `[ ]` open · `[x]` done · **S/M/L** = task size (see
 
 ## Blocked / needs a human
 
-- **Custom domain** — not chosen. Default `skills-hub.pages.dev`.
+- **Custom domain** — not chosen. Default `aiskills-hub.pages.dev`.
 - **Rubric weight changes** — require an ADR; do not adjust unilaterally.
 - **Any Cloudflare action that spends money.**
 

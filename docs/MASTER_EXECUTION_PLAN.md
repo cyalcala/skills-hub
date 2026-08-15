@@ -257,7 +257,7 @@ badges live.
 
 Carried forward for the implementing model to resolve or escalate:
 
-1. **Custom domain.** Not chosen. Default is `skills-hub.pages.dev`.
+1. **Custom domain.** Not chosen. Default is `aiskills-hub.pages.dev`.
 2. **Corpus ceiling.** At what artifact count does D1 (10 GB, but query-cost
    bound) stop being the right store? Estimate at 50k rows and revisit.
 3. **De-dup across forks.** A popular skill forked 200 times should appear once,

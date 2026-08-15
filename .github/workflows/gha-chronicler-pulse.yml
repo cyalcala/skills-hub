@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 10
     env:
       PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
-      HEALTH_API_URL: ${{ vars.HEALTH_API_URL || 'https://skills-hub.pages.dev/api/cron/health-rollup' }}
+      HEALTH_API_URL: ${{ vars.HEALTH_API_URL || 'https://aiskills-hub.pages.dev/api/cron/health-rollup' }}
 
     steps:
       - uses: actions/checkout@v4

@@ -83,13 +83,13 @@ npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc
 ```bash
 cd apps/web
 npm run build
-npx wrangler pages deploy dist --project-name skills-hub --branch main --config wrangler.jsonc
+npx wrangler pages deploy dist --project-name aiskills-hub --branch main --config wrangler.jsonc
 ```
 
 First run creates the project. Note the assigned `*.pages.dev` URL.
 
 Confirm the D1 binding is attached in the Cloudflare dashboard under
-**Workers & Pages → skills-hub → Settings → Bindings**. The binding name must be
+**Workers & Pages → aiskills-hub → Settings → Bindings**. The binding name must be
 exactly `DB`.
 
 ---
@@ -105,7 +105,7 @@ openssl rand -base64 32
 Give it to Cloudflare:
 
 ```bash
-npx wrangler pages secret put PROXY_SECRET --project-name skills-hub
+npx wrangler pages secret put PROXY_SECRET --project-name aiskills-hub
 ```
 
 Give the **same value** to GitHub Actions:
@@ -121,7 +121,7 @@ gh secret set PROXY_SECRET --repo cyalcala/skills-hub
 
 ## 6. Set repository variables
 
-Optional; each workflow has a default pointing at `skills-hub.pages.dev`. Set
+Optional; each workflow has a default pointing at `aiskills-hub.pages.dev`. Set
 these if your deployment lives elsewhere:
 
 ```bash
@@ -182,7 +182,7 @@ npx wrangler d1 execute DB --remote --config wrangler.jsonc \
 
 ## 9. Custom domain (optional)
 
-Cloudflare dashboard → **Workers & Pages → skills-hub → Custom domains**. Add
+Cloudflare dashboard → **Workers & Pages → aiskills-hub → Custom domains**. Add
 the domain and let Cloudflare manage DNS. Then update `PUBLIC_SITE_URL` in
 `wrangler.jsonc` and the repository variables above.
 
@@ -193,7 +193,7 @@ the domain and let Cloudflare manage DNS. Then update `PUBLIC_SITE_URL` in
 Pages keeps every deployment. To revert:
 
 ```bash
-npx wrangler pages deployment list --project-name skills-hub
+npx wrangler pages deployment list --project-name aiskills-hub
 ```
 
 Then promote a previous deployment from the dashboard.

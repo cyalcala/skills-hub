@@ -39,7 +39,7 @@ jobs:
     timeout-minutes: 20
     env:
       PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
-      CURATE_API_URL: ${{ vars.CURATE_API_URL || 'https://skills-hub.pages.dev/api/cron/curate' }}
+      CURATE_API_URL: ${{ vars.CURATE_API_URL || 'https://aiskills-hub.pages.dev/api/cron/curate' }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       LIMIT: ${{ inputs.limit || '500' }}
       FORCE: ${{ inputs.force }}

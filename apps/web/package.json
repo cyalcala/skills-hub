@@ -13,7 +13,7 @@
     "typecheck": "astro check && tsc --noEmit",
     "db:migrate:local": "wrangler d1 migrations apply DB --local --config wrangler.jsonc",
     "db:migrate": "wrangler d1 migrations apply DB --remote --config wrangler.jsonc",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name skills-hub --branch main --config wrangler.jsonc"
+    "deploy": "npm run build && wrangler pages deploy dist --project-name aiskills-hub --branch main --config wrangler.jsonc"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.10",

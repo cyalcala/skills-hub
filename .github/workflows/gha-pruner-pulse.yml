@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 15
     env:
       PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
-      PRUNE_API_URL: ${{ vars.PRUNE_API_URL || 'https://skills-hub.pages.dev/api/cron/prune' }}
+      PRUNE_API_URL: ${{ vars.PRUNE_API_URL || 'https://aiskills-hub.pages.dev/api/cron/prune' }}
       # Default TRUE on manual dispatch; the schedule below overrides to false.
       DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || inputs.dry_run }}
 
