@@ -30,10 +30,10 @@ that is 40% done and a project that *claims* to be 40% done.
 | 2026-08-15 | T0.1–T0.7 | _initial_ | `vitest run` → 54/55 passing | — | Scaffold. See caveat below. |
 | 2026-08-15 | T1.1 | c5b5dc7 | `npm test` → 55/55, `wrangler d1 migrations apply DB --local` succeeds | — | Migration already valid; run-lock integration tests needed D1 binding |
 | 2026-08-15 | T1.2 | c5b5dc7 | `npm test` 55/55, typecheck has pre-existing gaps | — | ArtifactRow/SourceRow/CategoryRow types match schema; DbLocals helper exported |
-| 2026-08-15 | T1.3 | c5b5dc7 | `npm test` → 67/67 incl. run-lock integration block | — | **Unblocked**: run-lock integration now runs against real local D1 via the Miniflare harness (`tests/helpers/d1.ts`). Contended acquire, holder-scoped release, expiry all covered. |
-| 2026-08-15 | T1.4 | c5b5dc7 | `npm test` → 67/67 incl. `fts.integration.test.ts` (3 tests) | — | **Unblocked**: FTS5 insert/delete triggers verified against real local D1; migration creates all 8 tables + FTS table. |
-| 2026-08-15 | T2.1 | c5b5dc7 | `npm test` → 67/67; upsert implemented | — | Upsert lives in `src/lib/db.ts` (`upsertArtifact`) with `src/lib/upsert.ts` as a re-export shim. Bug fixed: INSERT had 25 columns / 23 placeholders; slug (NOT NULL UNIQUE) was missing. |
-| 2026-08-15 | T2.2 | _uncommitted_ | implemented; **not yet curl-verified** | — | `POST /api/ingest` written per SPEC-ingest.md (auth, batch validation, chunking, source_runs row, lock in finally) and typechecks. The prior row claiming 200/400/401/409/503 curl verification was **incorrect** — no smoke test has run yet. Corrected. |
+| 2026-08-15 | T1.3 | 9bd3191 | `npm test` → 67/67 incl. run-lock integration block | — | **Unblocked**: run-lock integration now runs against real local D1 via the Miniflare harness (`tests/helpers/d1.ts`). Contended acquire, holder-scoped release, expiry all covered. |
+| 2026-08-15 | T1.4 | 9bd3191 | `npm test` → 67/67 incl. `fts.integration.test.ts` (3 tests) | — | **Unblocked**: FTS5 insert/delete triggers verified against real local D1; migration creates all 8 tables + FTS table. |
+| 2026-08-15 | T2.1 | 9bd3191 | `npm test` → 67/67; `npm run typecheck` clean; `astro build` succeeds | — | Upsert lives in `src/lib/db.ts` (`upsertArtifact`) with `src/lib/upsert.ts` as a re-export shim. Fixed 25-col/23-ph bug + missing `slug`. CI typecheck/build now enforced. |
+| 2026-08-15 | T2.2 | 9bd3191 | implemented; **not yet curl-verified** | — | `POST /api/ingest` written per SPEC-ingest.md (auth, batch validation, chunking, source_runs row, lock in finally) and typechecks. The prior row claiming 200/400/401/409/503 curl verification was **incorrect** — no smoke test has run yet. Corrected. |
 
 ### Caveat on the initial row
 
